@@ -1,0 +1,288 @@
+<!--兼容性的问题-->
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>海报画廊</title>
+
+		<style type="text/css">
+			*{
+				padding: 0;
+				margin: 0;
+			}
+			body{
+				background-color: #fff;
+				color: #555;
+				font-family: 'Avenirn Next','Lantinghei SC';
+				font-size: 14px;
+				-webkit-font-smoothing:antialiased;
+			}
+			.wrap{
+				width: 100%;/*设置垂直居中的方法*/
+				height: 600px;
+				position: absolute;
+				top: 50%;
+				margin-top: -300px;/*设置为高度的一半*/
+				background-color: #333;
+				overflow: hidden;
+				-webkit-perspective:800px;/*设置3D翻转的透视效果为800；最合适的状态*/
+			}
+			.photo{
+				width: 260px;
+				height: 320px;
+				position: absolute;
+				box-shadow: 0 0 1px rgba(0,0,0,0.01);
+				z-index: 1;
+				-webkit-transition:all 0.6s;
+			}
+			.photo .side{
+				width: 100%;
+				height: 100%;
+				background: #eee;
+				position: absolute;
+				left: 0;
+				right: 0;
+				padding: 20px;
+				box-sizing: border-box;/*内容和padding都会在其边框内实现(确保图片的全部显示:很重要)*/
+				-webkit-backface-visibility:hidden;/*注意定义背面样式的为不可见的位置*/
+
+			}
+			.photo .side-front{
+			}
+			.photo .side-front .image{
+				width: 100%;
+				height: 250px;
+				line-height: 250px;/*当图片的实际宽度小于定义的宽度时，图片居中*/
+				overflow: hidden;
+			}
+			.photo .side-front .image img{
+				width: 100%;
+			}
+			.photo .side-front .caption{
+				font-size: 16px;
+				line-height: 50px;
+				text-align: center;
+			}
+			.photo .side-back{}
+			.photo .side-back .desc{
+				background: #eee;
+				font-size: 14px;
+				line-height: 1.5em;
+			}
+			.photo_center{
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				margin-top: -160px;
+				margin-left: -130px;
+				z-index: 999;
+			} 
+			.photo .photo-wrap{
+				width: 100%;
+				height: 100%;
+				position: absolute;
+				-webkit-transform-style:preserve-3d;/*让其内部的两个子元素都支持3D的效果(side-front和side-back)*/
+				-webkit-transition:all 0.6s;/*到photo_center位置的时间*/
+			}
+			.photo-wrap .side-front{/*先确定正面与背面的元素，再将背面的元素设置为不可见*/
+				-webkit-transform:rotateY(0deg);
+			}
+			.photo-wrap .side-back{
+				-webkit-transform:rotateY(180deg);
+			}
+			.photo_front .photo-wrap{/*区别side-back和photo-back,这边的photo_front和photo_back是通过改变类名，设置改变类名以后的样式，即翻转时的样式*/
+				-webkit-transform:rotateY(0deg);
+
+			}
+			.photo_back .photo-wrap{
+				-webkit-transform:rotateY(180deg);
+
+			}
+			.nav{
+				position: absolute;
+				width: 80%;
+				height: 30px;
+				line-height: 30px;
+				left: 10%;
+			    bottom: 20px;
+				cursor: pointer;
+				z-index: 999;
+				text-align: center;/*其子元素呈现居中的样式*/
+			}
+			.i{
+				display:inline-block;
+				height: 30px;
+				width: 30px;
+				border-radius: 50%;
+				background: #ccc;
+				-webkit-transform:scale(0.48);/*设置为两个状态，导航的大小*/
+				-webkit-transition:all 0.5s;
+			}
+			.i_current{
+				-webkit-transform:scale(1);
+			}
+			.i_back{/*在其上方，设置visibility为hidden，此时不用*/
+				-webkit-transform:scale(1);
+				background: #555;
+				-webkit-transform:rotateY(-180deg);
+			}
+			/*优化样式*/
+			.photo{
+				left: 50%;
+				top: 50%;
+				margin-top: -160px;
+				margin-left: -130px;
+			}
+			.photo-wrap{
+				-webkit-transform-origin: 0% 50%;
+			}
+			.photo_front .photo-wrap{
+				-webkit-transform: translate(0px ,0px) rotateY(0deg);
+			}
+			.photo_back .photo-wrap{
+				-webkit-transform: translate(260px,0px) rotateY(180deg);
+			}
+		</style>
+	</head>
+	<body onselectstart="return false;"><!--防止页面的文字被选中-->
+		<!--2.改写视图为模板字符串-->
+		<div class="wrap" id="wrap"> 
+			<!--负责位移和旋转-->
+			<div class="photo photo_front" onclick="turn(this)" id="photo_{{index}}">
+				<!--负责3D的翻转样式-->
+				<div class="photo-wrap">
+					<div class="side side-front">
+						<p class="image"><img src="./images/{{img}}" /></p>
+						<p class="caption">{{caption}}</p>
+					</div>
+					<div class="side side-back">
+						<p class="desc">{{desc}}</p>
+					</div>
+				</div>
+			</div> 
+		</div>
+		<script type="text/javascript" src="./images/data.js"></script>
+		<script type="text/javascript">
+		/*3.构造通用函数g()*/
+			function g(selector){
+				var method=selector.substr(0,1)=='.'?'getElementsByClassName':'getElementById';/*判断传入的参数是id名称还是类名*/
+				return document[method](selector.substr(1));
+				/*return selector.substr(0,1)=='.'?document.getELementsByClassName(selector.substring(1)):document.getElementById(selector.substring(1));*/
+			}
+
+			function turn(elem){
+				var cls=elem.className;
+				var n=elem.id.split('_')[1];
+				var nav=g('#nav_'+n);/*错误:nav=g('#nav'+n).className;因为此时只单纯改变了className这个字符串，其下未完成赋值，区别上方*/
+				if(!/photo_center/.test(cls)){
+					return rsort(n);/*点击不存在'photo_center的图片时，，给其加行photo_center的属性名称，让其居中显示*/
+				}
+				if(/photo_front/.test(cls)){
+					cls=cls.replace(/photo_front/,'photo_back');/*让图片和导航绑定在一起*/
+					//nav=nav.replace(/i_curent/,'i_back');
+					nav.className+=' i_back ';/*因为图片最初显示的是正面*//*增加className时,注意加上空格符号，保证字符的间断*/
+				}
+				else{
+					cls=cls.replace(/photo_back/,'photo_front')
+					nav.className=nav.className.replace(/i_back/,' ');
+				}
+				return elem.className=cls;
+			}
+
+			/*随机生成一个数*/
+			function random( range ){
+				var max=Math.max(range[0],range[1]);
+				var min=Math.min(range[0],range[1]);
+				var diff=max-min;
+				var number=Math.ceil(Math.random()*diff)+min;/*以min为基数的数值范围(Math.ceil:取整)*/
+				return number;
+			}
+
+			/*数据输出*/
+			var data=data;
+			function addPhotos(){
+				var html=[];
+				var nav=[];
+				var template=g('#wrap').innerHTML;/*join和replace html样式时，注意加上innerHTML*/
+				for(s in data){
+					var _html=template
+								.replace('{{index}}',s)/*注意替换replace的书写样式*/
+								.replace('{{img}}',data[s].img)
+								.replace('{{caption}}',data[s].caption)
+								.replace('{{desc}}',data[s].desc);
+					html.push(_html);/*注意书写格式*/
+					nav.push('<span class="i" id="nav_'+s+'" onclick="turn(g(\'#photo_'+s+'\'))">&nbsp</span>');
+				}
+				html.push('<div class="nav">'+nav.join('')+'<div>');
+				g('#wrap').innerHTML=html.join('');
+				rsort(random([0,data.length-1]));/*向rsort中传入一个随机数据*/
+			}
+			addPhotos();
+
+			/*5.海报排序*/
+			function rsort(n){
+				var photos=[];
+				var _photo=g('.photo');
+				var photo_center=g('#photo_'+n);/*获取id值，返回的是一个字符串，获取className值，返回的是一个数组*/
+				for(var s=0;s<_photo.length;s++){
+					_photo[s].className=_photo[s].className.replace(/\s*photo_center\s*/,' ');
+					_photo[s].className=_photo[s].className.replace(/\s*photo_front\s*/,' ');
+					_photo[s].className=_photo[s].className.replace(/\s*photo_back\s*/,' ');
+					_photo[s].className+=' photo_front ';/*图片正反面的对调，是通过photo_front和photo_back的对调实现的，先前已经删除了photo_front的样式了*/
+					_photo[s].style.left='';
+					_photo[s].style.top='';
+					_photo[s].style['-webkit-transform']='rotate(360deg) scale(1.3)';/*手动删去要定义为photo_center元素的样式，方便其运用photo_center的样式*//*设置全部的图片区域的大小为原来的1.3倍*/
+					photos.push(_photo[s]);/*遍历删除_photo数组中，类名为photo_center的元素(之前就已经存在的)*/
+				}
+				photo_center.className+=' photo_center ';
+				photo_center=photos.splice(n,1)[0];/*得到去除photo_center id名称的元素，方便左右分区*/
+
+				var photos_left=photos.splice(0,Math.ceil(photos.length/2));
+				var photos_right=photos;
+
+				var ranges=range();/*变量名称和函数名称不能相同*/
+				for(s in photos_left){
+					photos_left[s].style.left=random(ranges.left.x)+'px';
+					photos_left[s].style.top=random(ranges.left.y)+'px';
+					/*直接写入文字的文本参数要用" '' "单括号括起*//*设置左右分区的图片区域大小为1，即只有photo_center保持原来的1.3倍大小*/
+					photos_left[s].style['-webkit-transform']='rotate('+random([-150,150])+'deg) scale(1)';/*注意js中修改style属性的书写规范特别是"[]"方括号中的属性*/
+				}
+				for(s in photos_right){
+					photos_right[s].style.left=random(ranges.right.x)+'px';
+					photos_right[s].style.top=random(ranges.right.y)+'px';
+					photos_right[s].style['-webkit-transform']='rotate('+random([-150,150])+'deg) scale(1)';
+				}
+
+				var navs=g('.i');
+				for(var s=0;s<navs.length;s++){
+					navs[s].className=navs[s].className.replace(/\s*i_current\s*/,' ');
+					navs[s].className=navs[s].className.replace(/\s*i_back\s*/,' ');
+				}
+				g('#nav_'+n).className+=' i_current ';
+
+			}
+
+			/*6.计算左右分区的范围*/
+			function range (){
+				var range={left:{x:[],y:[]},right:{x:[],y:[]}};/*定义一个三维的数组，数组元*/
+				var  wrap={
+					w:g('#wrap').clientWidth,
+					h:g('#wrap').clientHeight
+				};
+				var photo={
+					w:g('.photo')[0].clientWidth,
+					h:g('.photo')[0].clientHeight
+				};/*数组wrap和photo的定义*/
+				range.wrap=wrap;
+				range.photo=photo;/*定义三维数组的二维名称*/
+
+				range.left.x=[0-photo.w,wrap.w/2-photo.w/2];
+				range.left.y=[0-photo.h,wrap.h];
+				range.right.x=[wrap.w/2+photo.w/2,wrap.w+photo.w];
+				range.right.y=range.left.y;
+
+				return range;
+			}
+		</script>
+	</body>
+</html>
